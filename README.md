@@ -1,102 +1,96 @@
 # Roomify
 
-Roomify is an AI-powered architectural visualization application that turns 2D floor plans into polished, top-down 3D renders. It combines a React interface with Puter authentication, storage, hosting, workers, and image generation.
+Roomify is a learning project that turns a 2D floor plan into a top-down 3D architectural render using AI.
 
-Built and maintained by [rare1yhuman](https://github.com/rare1yhuman).
+I built this project while following a [JavaScript Mastery](https://www.youtube.com/@javascriptmastery/videos) tutorial. I am still learning React and TypeScript, so this project helped me understand how a complete application is put together and how different services work together.
+
+## What I learned
+
+While building Roomify, I practiced:
+
+- Creating pages and routes with React Router
+- Writing components with React and TypeScript
+- Styling a responsive interface with Tailwind CSS
+- Handling drag-and-drop image uploads
+- Using Puter for authentication, storage, and AI image generation
+- Saving projects and loading them again
+- Comparing the original floor plan with the generated result
+- Building and checking a project before deployment
 
 ## Features
 
-- Puter authentication for user-scoped projects
-- Drag-and-drop uploads for JPEG, PNG, and WebP floor plans up to 10 MB
-- AI-generated top-down architectural renders
-- Hosted source and rendered images
-- Persistent project history backed by a Puter Worker and KV storage
-- Before-and-after image comparison
-- PNG export for completed renders
-- Responsive dashboard and visualization workspace
+- Sign in with a Puter account
+- Upload JPEG, PNG, or WebP floor plans up to 10 MB
+- Generate a top-down 3D visualization with AI
+- Save uploaded and generated images
+- View previous projects
+- Compare before and after images with a slider
+- Download the generated image as a PNG
 
-## Tech stack
+## Built with
 
-- [React 19](https://react.dev/)
-- [React Router 7](https://reactrouter.com/)
-- [TypeScript](https://www.typescriptlang.org/)
-- [Vite](https://vite.dev/)
-- [Tailwind CSS 4](https://tailwindcss.com/)
-- [Puter.js](https://docs.puter.com/)
+- React 19
+- React Router 7
+- TypeScript
+- Vite
+- Tailwind CSS 4
+- Puter.js
 
-## How it works
+## Run the app locally
 
-1. A user signs in with Puter and uploads a floor-plan image.
-2. Roomify hosts the source image and saves the project through a Puter Worker.
-3. The visualization route sends the floor plan to Puter's image-generation API.
-4. The generated render is hosted, attached to the project, and shown beside the source image.
-5. The user can compare both versions and export the final render as a PNG.
+You need Node.js 20 or newer and npm installed.
 
-## Getting started
-
-### Prerequisites
-
-- Node.js 20 or newer
-- npm
-- A [Puter](https://puter.com/) account
-- A deployed Puter Worker based on `lib/puter.worker.js`
-
-### Installation
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/rare1yhuman/roomify.git
 cd roomify
+```
+
+### 2. Install the packages
+
+```bash
 npm install
 ```
 
-Create a local environment file:
-
-```bash
-cp .env.example .env
-```
-
-Set the URL of your deployed Puter Worker:
-
-```env
-VITE_PUTER_WORKER_URL="https://your-worker.example"
-```
-
-Start the development server:
+### 3. Start the development server
 
 ```bash
 npm run dev
 ```
 
-The application is available at `http://localhost:5173` by default.
+Open `http://localhost:5173` in your browser. Sign in with Puter before uploading a floor plan.
 
-## Available scripts
+## Other useful commands
 
-| Command | Description |
-| --- | --- |
-| `npm run dev` | Start the React Router development server |
-| `npm run typecheck` | Generate route types and run TypeScript checks |
-| `npm run build` | Create the production client and server bundles |
-| `npm run start` | Serve the production build |
-
-## Project structure
-
-```text
-app/          Routes, application shell, and styles
-components/   Shared interface components
-lib/          AI, Puter, hosting, worker, and utility logic
-public/       Static browser assets
-type.d.ts     Shared application types
-```
-
-## Docker
-
-Build and run the production container:
+Check the TypeScript code:
 
 ```bash
-docker build \
-  --build-arg VITE_PUTER_WORKER_URL="https://your-worker.example" \
-  -t roomify .
-docker run -p 3000:3000 roomify
+npm run typecheck
 ```
 
-Puter-backed functionality requires a valid worker URL and an authenticated Puter session in the browser.
+Create a production build:
+
+```bash
+npm run build
+```
+
+Run the production build:
+
+```bash
+npm run start
+```
+
+## Project folders
+
+```text
+app/          Pages, routes, and application styles
+components/   Reusable interface components
+lib/          Puter, AI, hosting, and utility code
+public/       Static files
+type.d.ts     Shared TypeScript types
+```
+
+## Note
+
+This is one of my learning projects, so there are still things I would like to improve as I learn more. Building it gave me useful experience with React, TypeScript, third-party services, and working through a larger project from start to finish.

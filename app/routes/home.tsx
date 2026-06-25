@@ -18,56 +18,73 @@ export function meta({}: Route.MetaArgs) {
 
 export default function Home() {
     const navigate = useNavigate();
-    const { userName } = useOutletContext<AuthContext>();
+    const { isSignedIn, userName } = useOutletContext<AuthContext>();
     const [projects, setProjects] = useState<DesignItem[]>([]);
-    const isCreatingProjectRef = useRef(false);
+    const pendingProjectRef = useRef<Promise<boolean> | null>(null);
 
-    const handleUploadComplete = async (base64Image: string) => {
-        try {
+    const handleUploadComplete = (base64Image: string): Promise<boolean> => {
+        if (pendingProjectRef.current) return pendingProjectRef.current;
 
-            if(isCreatingProjectRef.current) return false;
-            isCreatingProjectRef.current = true;
-            const newId = Date.now().toString();
-            const name = `Residence ${newId}`;
+        const pendingProject = (async () => {
+            try {
+                const newId = Date.now().toString();
+                const name = `Residence ${newId}`;
 
-            const newItem = {
-                id: newId, name, sourceImage: base64Image,
-                renderedImage: undefined,
-                timestamp: Date.now()
-            }
-
-            const saved = await createProject({ item: newItem, visibility: 'private' });
-
-            if(!saved) {
-                console.error("Failed to create project");
-                return false;
-            }
-
-            setProjects((prev) => [saved, ...prev]);
-
-            navigate(`/visualizer/${newId}`, {
-                state: {
-                    initialImage: saved.sourceImage,
-                    initialRendered: saved.renderedImage || null,
-                    name
+                const newItem = {
+                    id: newId, name, sourceImage: base64Image,
+                    renderedImage: undefined,
+                    timestamp: Date.now()
                 }
-            });
 
-            return true;
-        } finally {
-            isCreatingProjectRef.current = false;
-        }
+                const saved = await createProject({ item: newItem, visibility: 'private' });
+
+                if(!saved) {
+                    console.error("Failed to create project");
+                    return false;
+                }
+
+                setProjects((prev) => [saved, ...prev]);
+
+                navigate(`/visualizer/${newId}`, {
+                    state: {
+                        initialImage: saved.sourceImage,
+                        initialRendered: saved.renderedImage || null,
+                        name
+                    }
+                });
+
+                return true;
+            } finally {
+                pendingProjectRef.current = null;
+            }
+        })();
+
+        pendingProjectRef.current = pendingProject;
+        return pendingProject;
     }
 
     useEffect(() => {
+        let isMounted = true;
+
+        if (!isSignedIn) {
+            setProjects([]);
+            return () => {
+                isMounted = false;
+            };
+        }
+
         const fetchProjects = async () => {
             const items = await getProjects();
 
-            setProjects(items)
+            if (isMounted) setProjects(items)
         }
 
-        fetchProjects();
-    }, []);
+        void fetchProjects();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [isSignedIn]);
 
   return (
       <div className="home">

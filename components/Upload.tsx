@@ -1,40 +1,48 @@
 import {useCallback, useEffect, useRef, useState} from 'react'
 import {useOutletContext} from "react-router";
-import {CheckCircle2, ImageIcon, UploadIcon} from "lucide-react";
+import {ImageIcon, UploadIcon} from "lucide-react";
 import {
     ALLOWED_UPLOAD_TYPES,
     MAX_UPLOAD_SIZE_BYTES,
     MAX_UPLOAD_SIZE_LABEL,
     PROGRESS_INCREMENT,
-    REDIRECT_DELAY_MS,
     PROGRESS_INTERVAL_MS,
 } from "../lib/constants";
+
+type UploadPhase = "idle" | "processing" | "saving";
 
 const Upload = ({ onComplete }: UploadProps) => {
     const [file, setFile] = useState<File | null>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [progress, setProgress] = useState(0);
     const [error, setError] = useState<string | null>(null);
+    const [isClient, setIsClient] = useState(false);
+    const [phase, setPhase] = useState<UploadPhase>("idle");
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
-    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const completionStartedRef = useRef(false);
+    const isMountedRef = useRef(false);
+    const uploadAttemptRef = useRef(0);
 
     const { isSignedIn } = useOutletContext<AuthContext>();
+    const canUpload = isClient && isSignedIn;
 
     useEffect(() => {
+        isMountedRef.current = true;
+        setIsClient(true);
+
         return () => {
+            isMountedRef.current = false;
+            uploadAttemptRef.current += 1;
+
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
                 intervalRef.current = null;
-            }
-            if (timeoutRef.current) {
-                clearTimeout(timeoutRef.current);
-                timeoutRef.current = null;
             }
         };
     }, []);
 
     const processFile = useCallback((file: File) => {
-        if (!isSignedIn) return;
+        if (!canUpload) return;
 
         if (!ALLOWED_UPLOAD_TYPES.includes(file.type as typeof ALLOWED_UPLOAD_TYPES[number])) {
             setError("Choose a JPEG, PNG, or WebP image.");
@@ -47,45 +55,77 @@ const Upload = ({ onComplete }: UploadProps) => {
         }
 
         if (intervalRef.current) clearInterval(intervalRef.current);
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+        const uploadAttempt = uploadAttemptRef.current + 1;
+        uploadAttemptRef.current = uploadAttempt;
+        completionStartedRef.current = false;
 
         setFile(file);
         setProgress(0);
         setError(null);
+        setPhase("processing");
 
         const reader = new FileReader();
         reader.onerror = () => {
+            if (!isMountedRef.current || uploadAttemptRef.current !== uploadAttempt) return;
+
             setFile(null);
             setProgress(0);
+            setPhase("idle");
             setError("The selected image could not be read.");
         };
-        reader.onloadend = () => {
+        reader.onload = () => {
+            if (!isMountedRef.current || uploadAttemptRef.current !== uploadAttempt) return;
+
             const base64Data = reader.result as string;
+            let nextProgress = 0;
 
             intervalRef.current = setInterval(() => {
-                setProgress((prev) => {
-                    const next = prev + PROGRESS_INCREMENT;
-                    if (next >= 100) {
-                        if (intervalRef.current) {
-                            clearInterval(intervalRef.current);
-                            intervalRef.current = null;
-                        }
-                        timeoutRef.current = setTimeout(() => {
-                            void onComplete(base64Data);
-                            timeoutRef.current = null;
-                        }, REDIRECT_DELAY_MS);
-                        return 100;
-                    }
-                    return next;
-                });
+                if (!isMountedRef.current || uploadAttemptRef.current !== uploadAttempt) {
+                    if (intervalRef.current) clearInterval(intervalRef.current);
+                    intervalRef.current = null;
+                    return;
+                }
+
+                nextProgress = Math.min(nextProgress + PROGRESS_INCREMENT, 100);
+                setProgress(nextProgress);
+
+                if (nextProgress < 100 || completionStartedRef.current) return;
+
+                completionStartedRef.current = true;
+                if (intervalRef.current) clearInterval(intervalRef.current);
+                intervalRef.current = null;
+                setPhase("saving");
+
+                void onComplete(base64Data)
+                    .then((wasSaved) => {
+                        if (
+                            wasSaved ||
+                            !isMountedRef.current ||
+                            uploadAttemptRef.current !== uploadAttempt
+                        ) return;
+
+                        setFile(null);
+                        setProgress(0);
+                        setPhase("idle");
+                        setError("Could not save the project. Please try again.");
+                    })
+                    .catch(() => {
+                        if (!isMountedRef.current || uploadAttemptRef.current !== uploadAttempt) return;
+
+                        setFile(null);
+                        setProgress(0);
+                        setPhase("idle");
+                        setError("Could not save the project. Please try again.");
+                    });
             }, PROGRESS_INTERVAL_MS);
         };
         reader.readAsDataURL(file);
-    }, [isSignedIn, onComplete]);
+    }, [canUpload, onComplete]);
 
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
-        if (!isSignedIn) return;
+        if (!canUpload) return;
         setIsDragging(true);
     };
 
@@ -97,14 +137,14 @@ const Upload = ({ onComplete }: UploadProps) => {
         e.preventDefault();
         setIsDragging(false);
 
-        if (!isSignedIn) return;
+        if (!canUpload) return;
 
         const droppedFile = e.dataTransfer.files[0];
         if (droppedFile) processFile(droppedFile);
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!isSignedIn) return;
+        if (!canUpload) return;
 
         const selectedFile = e.target.files?.[0];
         if (selectedFile) {
@@ -125,7 +165,7 @@ const Upload = ({ onComplete }: UploadProps) => {
                         type="file"
                         className="drop-input"
                         accept="image/jpeg,image/png,image/webp"
-                        disabled={!isSignedIn}
+                        disabled={!canUpload}
                         onChange={handleChange}
                     />
 
@@ -134,7 +174,7 @@ const Upload = ({ onComplete }: UploadProps) => {
                             <UploadIcon size={20} />
                         </div>
                         <p>
-                            {isSignedIn ? (
+                            {canUpload ? (
                                 "Click to upload or just drag and drop"
                             ): ("Sign in or sign up with Puter to upload")}
                         </p>
@@ -147,22 +187,18 @@ const Upload = ({ onComplete }: UploadProps) => {
                 <div className="upload-status">
                     <div className="status-content">
                         <div className="status-icon">
-                            {progress === 100 ? (
-                                <CheckCircle2 className="check" />
-                            ): (
-                                <ImageIcon className="image" />
-                            )}
+                            <ImageIcon className="image" />
                         </div>
 
                         <h3>{file.name}</h3>
 
                         <div className='progress'>
                             <div className="bar" style={{ width: `${progress}%` }} />
-
-                            <p className="status-text">
-                                {progress < 100 ? 'Analyzing Floor Plan...' : 'Redirecting...'}
-                            </p>
                         </div>
+
+                        <p className="status-text">
+                            {phase === "saving" ? "Saving project..." : "Analyzing Floor Plan..."}
+                        </p>
                     </div>
                 </div>
             )}

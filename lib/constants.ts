@@ -1,7 +1,4 @@
-export const PUTER_WORKER_URL = import.meta.env.VITE_PUTER_WORKER_URL || "";
-
 export const PROGRESS_INCREMENT = 15;
-export const REDIRECT_DELAY_MS = 600;
 export const PROGRESS_INTERVAL_MS = 100;
 export const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024;
 export const MAX_UPLOAD_SIZE_LABEL = "10 MB";

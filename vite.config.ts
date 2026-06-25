@@ -5,4 +5,11 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
   plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],
+  optimizeDeps: {
+    include: ["@heyputer/puter.js", "lucide-react", "react-compare-slider"],
+  },
+  server: {
+    port: 5173,
+    strictPort: true,
+  },
 });

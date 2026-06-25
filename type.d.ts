@@ -20,7 +20,7 @@ interface DesignItem {
 }
 
 interface UploadProps {
-    onComplete: (base64File: string) => Promise<boolean | void> | boolean | void;
+    onComplete: (base64File: string) => Promise<boolean>;
 }
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
